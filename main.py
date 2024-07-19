@@ -1,4 +1,3 @@
-from fastapi.templating import Jinja2Templates
 import uvicorn
 from fastapi import FastAPI
 
@@ -26,8 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-#  라우터
-app.include_router(router, tags=['register'])
+
+app.include_router(router, tags=['user_create'])
+app.include_router(router, tags=['login'])
+app.include_router(router, tags=['logout'])
+
 
 
 if __name__ == '__main__':

@@ -37,7 +37,7 @@ class UserService:
     @classmethod
     async def userLogin(cls, login_base: LoginBase, db: AsyncSession):
         async with db.begin():
-            result = await db.execute(select(User).filter(User.userId == login_base.userId))
+            result = await db.execute(select(User).filter(User.userId == login_base.username))
             return result.scalars().first()
         
 

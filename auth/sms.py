@@ -25,5 +25,5 @@ class verify_sms:
             .v2 \
             .services(service_sid) \
             .verification_checks \
-            .create(to=phone, code=code)  # to = 받는 사람 번호
+            .create(to=phone, code=code)
         print(check_verification.status)

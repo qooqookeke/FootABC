@@ -36,7 +36,7 @@ async def user_create(userCreate: UserCreate, db: AsyncSession = Depends(get_db)
 # 로그인
 @router.post("/login", response_model=Token)
 async def login(login_form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    existing_user = await UserService.userLogin(login_form.username, login_form.password, db)    
+    existing_user = await UserService.userLogin(login_form, db)    
     if not existing_user or not pwd_context.verify(login_form.password, existing_user.hashed_pw):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
@@ -47,7 +47,7 @@ async def login(login_form: OAuth2PasswordRequestForm = Depends(), db: AsyncSess
     # token 생성
     data = {
         "sub": existing_user.username,
-        "exp": datetime.now() + timedelta(minutes=Config.JWT_ACCESS_TOKEN_EXPIRES)
+        "exp": datetime.now() + timedelta(minutes=int(Config.JWT_ACCESS_TOKEN_EXPIRES))
     }
     access_token = jwt.encode(data, Config.JWT_SECRET_KEY, Config.ALGORITHM)
 
@@ -69,27 +69,29 @@ async def logout(response: Response, request: Request):
 
 # sms 아이디 찾기
 @router.post("/find_id/phone")
-async def findId(body: idFindform_sms, db: AsyncSession = Depends(get_db)):
-    existing_user = await UserService.userIdFind_sms(body.username, body.phone, db)
+async def findIdSms(body: idFindform_sms, db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userIdFind_sms(body, db)
     if not existing_user:
         raise HTTPException(status_code=401, detail="일치하는 계정 정보가 존재하지 않습니다.")
     verify_send_sms(body.phone)
     return {"msg": f"{body.phone}로 본인인증 코드가 전송되었습니다."}
 
-# # sms 비번 찾기(변경)
-# @router.post("/find_pw/phone")
-# async def findPw(pw_find: pwFind, db: AsyncSession = Depends(get_db)):
-#     existing_user = await UserService.userPwFind(pw_find.username, pw_find.phone, db)
-#     if not existing_user:
-#         raise HTTPException(status_code=401, detail="일치하는 아이디가 존재하지 않습니다.")
-#     return send_verification_code
+# sms 비번 찾기(변경)
+@router.post("/find_pw/phone")
+async def findPwSms(body: pwFindForm_sms, db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userPwFind(body.username, body.phone, db)
+    if not existing_user:
+        raise HTTPException(status_code=401, detail="일치하는 아이디가 존재하지 않습니다.")
+    verify_send_sms(body.phone)
+    return {"msg": f"{body.phone}로 본인인증 코드가 전송되었습니다."}
+    
 
-# # sms 인증 확인
-# @router.post("/verify/sms/")
-# def check_verification_code(verification_check: VerificationCheck, db: AsyncSession = Depends(get_db)):
-#     if not verify_sms(sms=verification_check.email, code=verification_check.verify_code):
-#         raise HTTPException(status_code=400, detail="잘못된 인증코드입니다. 다시 확인해주세요.")
-#     return {"msg": "본인인증을 성공했습니다."}
+# sms 코드 인증 확인
+@router.post("/verify-sms/")
+def check_verification_code(request: Verificationsms):
+    if not verify_sms(sms=request.phone, code=request.verify_code):
+        raise HTTPException(status_code=400, detail="유효하지 않은 인증코드입니다.")
+    return {"msg": "본인인증을 성공했습니다."}
 
 
 # 이메일 아이디 찾기
@@ -113,17 +115,17 @@ async def findPwEmail(body: pwFindForm_email, db: AsyncSession = Depends(get_db)
 
 
 # 이메일 코드 인증 확인
-@router.post("/verify-code/")
+@router.post("/verify-email/")
 def verification_email_code(request: Verificationemail):
     if verify_code(request.email, request.verify_code):
         return {"msg": "본인인증을 성공하였습니다."}
     else:
-        raise HTTPException(status_code=400, detail="유효하지 않은 인증코드 입니다.")
-
+        raise HTTPException(status_code=400, detail="유효하지 않은 인증코드입니다.")
 
 
 # 아이디 찾기 결과 -> 아이디 조회 확인
-
+# @router.get("/find_id/result")
+# def findIdResult(re) 
 
 # # 비번 찾기 결과 -> 새로운 비번 설정
 # @router.post("/password-reset/")
@@ -135,6 +137,10 @@ def verification_email_code(request: Verificationemail):
 #         raise HTTPException(status_code=404, detail="User not found")
 #     return {"msg": "Password reset successful"}
 
+
+# 분석 이미지 업로드
+# @router.post("/uploadimages/")
+# async def create_gpt(request: Request, Rt sup: File:(...), Lt sup: File(...), )
 
 # # gpt 분석
 # @router.post("/gpt/", response_class=JSONResponse)

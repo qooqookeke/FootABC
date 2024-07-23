@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import Any, List, Union, Optional
 from pydantic import BaseModel, field_validator, EmailStr, Field
 from pydantic_core.core_schema import FieldValidationInfo
 from datetime import datetime
@@ -71,18 +71,88 @@ class tokenData(BaseModel):
     username: str | None = None
 
 
-# 아이디, 비번 찾기
-class userFind(UserBase):
+# 인증 관련
+class Verificationemail(BaseModel):
+    email: EmailStr
+    verify_code: str
+
+class Verificationsms(BaseModel):
+    phone: str
+    verify_code: str
+
+
+# 아이디 찾기
+class idFindForm_email(BaseModel):
+    username: str
+    email: EmailStr
     
     @field_validator('username', 'email')
     def check_empty(cls, v):
         if not v or not v.strip():
-            raise HTTPException(status_code=422, detail="빈 칸을 채워주세요")
+            raise HTTPException(status_code=422, detail="이름과 이메일 주소를 입력해주세요.")
         return v
 
-    @field_validator('phone')
+class idFindform_sms(BaseModel):
+    username: str
+    phone: str
+    
+    @field_validator('username', 'phone')
     def check_empty(cls, v):
         if not v or not v.strip():
-            raise HTTPException(status_code=422, detail="빈 칸을 채워주세요")
+            raise HTTPException(status_code=422, detail="이름과 휴대전화번호를 입력해주세요.")
         return v
 
+
+# 비번 찾기
+class pwFindForm_email(BaseModel):
+    userId: str
+    username: str
+    email: EmailStr
+
+    @field_validator('userId', 'username', 'email')
+    def check_empty(cls, v):
+        if not v or not v.strip():
+            raise HTTPException(status_code=422, detail="빈 칸을 채워주세요.")
+        return v
+        
+        
+class pwFindForm_sms(BaseModel):
+    userId: str
+    username: str
+    phone: str
+    
+    @field_validator('userId', 'username', 'phone')
+    def check_empty(cls, v):
+        if not v or not v.strip():
+            raise HTTPException(status_code=422, detail="빈 칸을 채워주세요.")
+        return v
+
+
+# 비번 찾기 -> 비번 변경
+class setNewPw(UserBase):
+    new_pw1 : str
+    new_pw2 : str
+    
+    @field_validator('new_pw1')
+    def validate_password(cls, v):
+        if len(v) < 6:
+            raise HTTPException(status_code=422, detail="비밀번호는 6자리 이상 영문과 숫자를 포함하여 작성해주세요.")        
+        if not any(char.isdigit() for char in v):
+            raise HTTPException(status_code=422, detail="비밀번호는 6자리 이상 영문과 숫자를 포함하여 작성해주세요.")        
+        if not any(char.isalpha() for char in v):
+            raise HTTPException(status_code=422, detail="비밀번호는 6자리 이상 영문과 숫자를 포함하여 작성해주세요.")
+        return v
+    
+    @field_validator('new_pw2')
+    def passwords_match(cls, v, info: FieldValidationInfo):
+        password1 = info.data.get('new_pw1')
+        if password1 and v != password1:
+            raise HTTPException(status_code=422, detail="비밀번호가 일치하지 않습니다.")
+        return v
+    
+    
+# class resultBase(BaseModel):
+#     userId: str
+#     custom_id: str
+#     custom_size: str
+#     content: str

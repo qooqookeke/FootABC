@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.ext.declarative  import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import MetaData
 from config import Config
 
 DATABASE_URL = Config.DB_URL
@@ -16,6 +17,9 @@ AsyncSessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+
+metadata = MetaData()
+
 
 async def get_db():
     async with AsyncSessionLocal() as session:

@@ -6,11 +6,24 @@ from twilio.rest import Client
 account_sid = Config.TWILIO_ACCOUNT_SID
 auth_token = Config.TWILIO_AUTH_TOKEN
 client = Client(account_sid, auth_token)
+service_sid = Config.TWILIO_VERIFY_SERVICE_SID
 
-message = client.messages.create(
-    from_="+15017122661", # 보내는 번호 (발급받은 trial number)
-    to="+15558675310", # 문자 받을 번호 +821012341234
-    body="문자 보낼 내용", # 문자 보낼 내용
-)
+class verify_send_sms:
+    #검증 문자 전송
+    def send_verification(phone: str):
+        send_verification = client.verify \
+            .v2 \
+            .services(service_sid) \
+            .verifications \
+            .create(to=phone, channel='sms')  # to = 받는 사람 번호
+        print(send_verification.sid)
 
-print(message.body)
+class verify_sms:
+    #검증 문자 확인
+    def check_verification(phone: str, code: str):
+        check_verification = client.verify \
+            .v2 \
+            .services(service_sid) \
+            .verification_checks \
+            .create(to=phone, code=code)  # to = 받는 사람 번호
+        print(check_verification.status)

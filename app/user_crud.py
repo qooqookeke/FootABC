@@ -1,9 +1,9 @@
 from datetime import datetime
 from passlib.context import CryptContext
 from sqlalchemy.future import select
-from app.user_schema import UserCreate, LoginBase
+from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, setNewPw
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.user_models import User    
+from app.user_models import User
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -35,11 +35,61 @@ class UserService:
         
     # 로그인
     @classmethod
-    async def userLogin(cls, userId: str, hashed_pw: str, db: AsyncSession):
+    async def userLogin(cls, login_base: LoginBase, db: AsyncSession):
         async with db.begin():
-            result = await db.execute(select(User).filter(User.userId == userId))
+            result = await db.execute(select(User).filter(User.userId == login_base.userId))
             return result.scalars().first()
+        
 
+    # 아이디 찾기
+    @classmethod
+    async def userIdFind_email(cls, id_find: idFindForm_email, db: AsyncSession):
+        async with db.begin():
+            emailVerify = await db.execute(select(User).filter(User.username == id_find.username, User.email == id_find.email))
+            return emailVerify.scalars().first()
+            
+    @classmethod
+    async def userIdFind_sms(cls, id_find: idFindform_sms, db: AsyncSession):
+        async with db.begin():
+            phoneVerify = await db.execute(select(User).filter(User.username == id_find.username, User.phone == id_find.phone))
+            return phoneVerify.scalars().first()
+    
+    
+    # 비번 찾기
+    @classmethod
+    async def userPwFind_email(cls, pw_find: pwFindForm_email, db:AsyncSession):
+        async with db.begin():
+            emailVerify = await db.execute(select(User).filter(User.userId == pw_find.userId, User.username == pw_find.username, User.email == pw_find.email))
+            return emailVerify.scalars().first()
+    
+    @classmethod
+    async def userPwFind_sms(cls, pw_find: pwFindForm_sms, db:AsyncSession):
+        async with db.begin():
+            phoneVerify = await db.execute(select(User).filter(User.userId == pw_find.userId, User.username == pw_find.username, User.phone == pw_find.phone))
+            return phoneVerify.scalars().first()
+        
+    
+    # 비번 찾기 -> 비번 변경  
+    @classmethod
+    async def settingpw(cls, set_newpw: setNewPw, db: AsyncSession):
+        db_user = User(
+            hashed_pw = pwd_context.hash(set_newpw.new_pw1))
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    
+    
+    # @classmethod
+    # async def gpt_result(cls, userId: str, gpt_result: gptScript, db:AsyncSession):
+    #     db_result = gptScript(
+    #         userId = 
+    #         content = gpt_result.content
+    #     )
+    #     db.commit()
+    #     db.refresh(db_result)
+    #     return db_result
+    
+    
     # # 회원 인증
     # @classmethod
     # def userAuthenticate(cls, db: AsyncSession, userId: str, password: str):

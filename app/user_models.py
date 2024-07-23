@@ -20,6 +20,10 @@ class User(Base):
     # items = relationship("Item", back_populates="owner")
 
 
+
+# class gptScript(Base):
+#     content: str
+
 # class Item(Base):
 #     __tablename__ = "items"
 

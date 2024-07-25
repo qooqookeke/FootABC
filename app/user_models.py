@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from app.user_database import Base
 
@@ -20,7 +20,21 @@ class User(Base):
     # items = relationship("Item", back_populates="owner")
 
 
+# 분석 결과
+# class result(Base):
+#     __tablename__ = "result"
+#     id = Column(Integer, primary_key=True, index=True)
+#     Ltsup = Column(Integer)
+#     Rtsup = Column(Integer)
+#     LtMed = Column(Integer)
+#     RtMed = Column(Integer)
+#     LtAnk = Column(Integer)
+#     RtAnk = Column(Integer)
+#     Bla = Column(Integer)
+#     created_at = Column(DateTime, default=datetime.now)
 
+
+# gpt 분석
 # class gptScript(Base):
 #     content: str
 

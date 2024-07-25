@@ -1,7 +1,7 @@
 from datetime import datetime
 from passlib.context import CryptContext
 from sqlalchemy.future import select
-from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, setNewPw
+from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, setNewPw, gptBase
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.user_models import User
 from sqlalchemy.orm import Session
@@ -78,11 +78,13 @@ class UserService:
         db.refresh(db_user)
         return db_user
     
-    
+    # gpt 분석
     # @classmethod
-    # async def gpt_result(cls, userId: str, gpt_result: gptScript, db:AsyncSession):
-    #     db_result = gptScript(
-    #         userId = 
+    # async def gpt_result(cls, userId: str, gpt_result: gptBase, db:AsyncSession):
+    #     db_result = gpt_result(
+    #         userId = gpt_result.userId,
+    #         custom_id = gpt_result.custom_id,
+    #         custom_size = gpt_result.custom_size,
     #         content = gpt_result.content
     #     )
     #     db.commit()

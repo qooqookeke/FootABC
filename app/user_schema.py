@@ -149,10 +149,22 @@ class setNewPw(UserBase):
         if password1 and v != password1:
             raise HTTPException(status_code=422, detail="비밀번호가 일치하지 않습니다.")
         return v
-    
-    
-# class resultBase(BaseModel):
-#     userId: str
-#     custom_id: str
-#     custom_size: str
-#     content: str
+
+# 이미지 분석
+class resultBase(BaseModel):
+    userId: str
+    custom_id: str
+    Ltsup : str
+    Rtsup : str
+    LtMed : str
+    RtMed : str
+    LtAnk : str
+    RtAnk : str
+    Bla : str
+
+
+# gpt 분석
+class gptBase(BaseModel):
+    userId :str 
+    custom_id: str
+    content: str

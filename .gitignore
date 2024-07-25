@@ -1,5 +1,6 @@
 config.py
 sqldata.db
+.env
 
 
 # Byte-compiled / optimized / DLL files

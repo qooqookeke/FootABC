@@ -6,3 +6,6 @@ python-jose
 passlib[bcrypt]
 twilio
 secure-smtplib
+boto3
+uvicorn 
+python-multipart

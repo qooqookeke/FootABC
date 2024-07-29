@@ -128,8 +128,16 @@ class pwFindForm_sms(BaseModel):
         return v
 
 
-# 비번 찾기 -> 비번 변경
-class setNewPw(UserBase):
+# 아이디 찾기 결과
+class UserIdForm(BaseModel):
+    username: str
+    email: str
+    phone: str
+    userId: str
+
+
+# 비번 찾기 결과 -> 비번 변경
+class updatePw(BaseModel):
     new_pw1 : str
     new_pw2 : str
     

@@ -22,12 +22,13 @@ def send_verification(phone: str):
 
 # 검증 문자 확인
 def check_verification(phone: str, code: str) -> bool:
-    verification_check = client.verify.v2.services(
-    service_sid
-    ).verification_checks.create(to='+82'+phone, code=code)
-    
-    if verification_check.status == 'approved':
-        print('본인인증 완료')
-        return 
-    else: 
-        print('본인인증 실패')
+    try:
+        verification_check = client.verify.v2.services(
+        service_sid
+        ).verification_checks.create(to='+82'+phone, code=code)
+        
+        if verification_check.status == 'approved':
+            return HTTPException(status_code=200, detail = "본인인증을 완료했습니다.") 
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="본인인증에 실패하였습니다. 다시 시도해주세요.")

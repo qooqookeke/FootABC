@@ -13,10 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from config import Config
 from fastapi.responses import JSONResponse
-# from gpt import create_prompt
 
 from app.user_database import get_db
-from app.user_schema import UserCreate, UserBase, Token, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, Verificationemail, Verificationsms, setNewPw, gptBase
+from app.user_schema import UserCreate, UserBase, Token, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, Verificationemail, Verificationsms, updatePw, gptBase
 from app.user_crud import UserService, pwd_context
 from auth.email import send_email, verify_code
 from auth.sms import send_verification, check_verification
@@ -71,7 +70,7 @@ async def logout(response: Response, request: Request):
 
 
 # sms 아이디 찾기
-@router.post("/find_id/phone")
+@router.post("/findId_phone")
 async def findIdSms(body: idFindform_sms, db: AsyncSession = Depends(get_db)):
     existing_user = await UserService.userIdFind_sms(body, db)
     if not existing_user:
@@ -80,7 +79,7 @@ async def findIdSms(body: idFindform_sms, db: AsyncSession = Depends(get_db)):
     return {"msg": f"{body.phone}로 본인인증 코드가 전송되었습니다."}
 
 # sms 비번 찾기(변경)
-@router.post("/find_pw/phone")
+@router.post("/findPw_phone")
 async def findPwSms(body: pwFindForm_sms, db: AsyncSession = Depends(get_db)):
     existing_user = await UserService.userPwFind_sms(body.username, body.phone, db)
     if not existing_user:
@@ -89,33 +88,30 @@ async def findPwSms(body: pwFindForm_sms, db: AsyncSession = Depends(get_db)):
     return {"msg": f"{body.phone}로 본인인증 코드가 전송되었습니다."}
     
 
-# TODO : 확인 필요
 # sms 코드 인증 확인
 @router.post("/verify-sms/")
 def check_verification_code(request: Verificationsms):
-    if verify_code(request.phone, request.verify_code):
-        return {"msg": "본인인증을 성공했습니다."}
-    else:
-        raise HTTPException(status_code=400, detail="유효하지 않은 코드입니다.")
+    check = check_verification(request.phone, request.verify_code)
+    return check
 
 
 # 이메일 아이디 찾기
 @router.post("/find_id/email")
-async def findIdEmail(body: idFindForm_email, db: AsyncSession = Depends(get_db)):
+async def findIdEmail(body: idFindForm_email, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     existing_user = await UserService.userIdFind_email(body, db)
     if not existing_user:
         raise HTTPException(status_code=401, detail="일치하는 계정 정보가 존재하지 않습니다.")
-    send_email(body.email)
+    background_tasks.add_task(send_email, body.email)
     return {"msg": f"{body.email}로 본인인증 이메일이 전송되었습니다."}
 
 # 이메일 비번 찾기(변경)
 @router.post("/find_pw/email")
-async def findPwEmail(body: pwFindForm_email, db: AsyncSession = Depends(get_db)):
+async def findPwEmail(body: pwFindForm_email, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     print(body)
     existing_user = await UserService.userPwFind_email(body, db)
     if not existing_user:
         raise HTTPException(status_code=401, detail="일치하는 계정 정보가 존재하지 않습니다.")
-    send_email(body.email)
+    background_tasks.add_task(send_email, body.email)
     return {"msg": f"{body.email}로 본인인증 이메일이 전송되었습니다."}
 
 
@@ -128,20 +124,42 @@ def verification_email_code(request: Verificationemail):
         raise HTTPException(status_code=400, detail="유효하지 않은 인증코드입니다.")
 
 
-# 아이디 찾기 결과 -> 아이디 조회 확인
-# @router.get("/find_id/result")
-# def findIdResult(request) 
+# 이메일 아이디 찾기 결과 -> 아이디 조회 확인
+@router.post("/find_id/email/result")
+async def find_id(body: idFindForm_email, db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userIdFind_email(body, db)
+    if not existing_user:
+        raise HTTPException(status_code=401, detail="계정정보를 다시 확인해주세요.")
+    return {"msg": f"계정 아이디는 {existing_user.userId} 입니다."}
 
 
-# # 비번 찾기 결과 -> 새로운 비번 설정
-# @router.post("/password-reset/")
-# def reset_password(request: setNewPw, db: AsyncSession = Depends(get_db)):
-#     if not verify_sms(request.email, request.code):
-#         raise HTTPException(status_code=400, detail="Invalid verification code")
-#     user = UserService.settingpw(db, email=request.email, new_password=request.new_password)
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return {"msg": "Password reset successful"}
+# sms 아이디 찾기 결과 -> 아이디 조회 확인
+@router.post("/find_id/phone/result")
+async def find_id(body: idFindform_sms, db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userIdFind_phone(body, db)
+    if not existing_user:
+        raise HTTPException(status_code=401, detail="계정정보를 다시 확인해주세요.")
+    return {"msg": f"계정 아이디는 {existing_user.userId} 입니다."}
+
+
+# 이메일 비번 찾기 결과 -> 새로운 비번 설정
+@router.post("/find_pw/email/password-reset/")
+async def reset_password(body: pwFindForm_email, newPw: updatePw, db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userPwFind_email(body, db)
+    if not existing_user:
+        raise HTTPException(status_code=401, detail="계정정보를 다시 확인해주세요.")
+    await UserService.updatePw_email(body, newPw, db)
+    return {"msg": "비밀번호가 성공적으로 변경되었습니다."}
+
+
+# sms 비번 찾기 결과 -> 새로운 비번 설정
+@router.post("/find_pw/phone/password-reset/")
+async def reset_password(body: pwFindForm_sms, newPw: updatePw,  db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userPwFind_sms(body, db)
+    if not existing_user:
+        raise HTTPException(status_code=401, detail="계정정보를 다시 확인해주세요.")
+    await UserService.updatePw_sms(body, newPw, db)
+    return {"msg": "비밀번호가 성공적으로 변경되었습니다."}
 
 
 # 분석 이미지 업로드
@@ -192,7 +210,7 @@ async def analyze(request: Request, background_tasks: BackgroundTasks,
                                 filename,
                                 ExtraArgs = {'ACL':'public-read',
                                         'ContentType':'image/jpeg'})
-        print("파일 업로드가 완료되었습니다.")
+        print("파일 업로드 완료")
         
     except Exception as e:
         print(e)
@@ -201,12 +219,14 @@ async def analyze(request: Request, background_tasks: BackgroundTasks,
     # 이미지 분석
     # result = subprocess.run(["python", "inference_web.py"], capture_output=True, text=True)
     
-    return {"detail": "분석이 진행중 입니다."}
+    return {"detail": "분석이 완료되었습니다."}
 
 
-# 이미지 분석 결과 내보내기(평발 or 요족: 각도, 발목 불안정성, 다리모양)
+# 이미지 분석 결과(평발 or 요족: 각도 / 발목 불안정성 / 다리모양) 
+# 데이터베이스 구축 예정
 @router.post("/result/")
 async def result(request: Request):
+    
     return request
 
 

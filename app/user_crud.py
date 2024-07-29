@@ -1,7 +1,8 @@
 from datetime import datetime
+from fastapi import HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.future import select
-from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, setNewPw, gptBase
+from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, updatePw, gptBase, UserIdForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.user_models import User
 from sqlalchemy.orm import Session
@@ -69,16 +70,57 @@ class UserService:
             return phoneVerify.scalars().first()
         
     
-    # 비번 찾기 -> 비번 변경  
+    # 이메일 아이디 찾기 결과
     @classmethod
-    async def settingpw(cls, set_newpw: setNewPw, db: AsyncSession):
-        db_user = User(
-            hashed_pw = pwd_context.hash(set_newpw.new_pw1))
-        db.commit()
-        db.refresh(db_user)
-        return db_user
+    async def userIdFind_email(cls, id_find: UserIdForm, db: AsyncSession):
+        async with db.begin():
+            stmt = select(User).filter(User.username == id_find.username, User.email == id_find.email)
+            user = await db.execute(stmt)
+            return user.scalars().first()
     
-    # gpt 분석
+    # sms 아이디 찾기 결과
+    @classmethod
+    async def userIdFind_phone(cls, id_find: UserIdForm, db: AsyncSession):
+        async with db.begin():
+            stmt = select(User).filter(User.username == id_find.username, User.phone == id_find.phone)
+            user = await db.execute(stmt)
+            return user.scalars().first()
+    
+    # 이메일 비번 찾기 -> 비번 변경  
+    @classmethod
+    async def updatePw_email(cls, pwForm: pwFindForm_email, set_newpw: updatePw, db: AsyncSession):
+        async with db.begin():
+            stmt = select(User).filter(User.userId == pwForm.userId, User.username == pwForm.username, User.email == pwForm.email)
+            result = await db.execute(stmt)
+            user = result.scalars().first()
+            if not user:
+                raise HTTPException(status_code=404, detail="일치하는 계정을 찾을 수 없습니다.")
+            user.hashed_pw = pwd_context.hash(set_newpw.new_pw1)
+            await db.commit()
+    
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return pwd_context.hash(password)
+    
+    
+    # sms 비번 찾기 -> 비번 변경  
+    @classmethod
+    async def updatePw_sms(cls, pwReset: pwFindForm_sms, set_newpw: updatePw, db: AsyncSession):
+        async with db.begin():
+            stmt = select(User).filter(User.userId == pwReset.userId, User.username == pwReset.username, User.phone == pwReset.phone)
+            result = await db.execute(stmt)
+            user = result.scalars().first()
+            if not user:
+                raise HTTPException(status_code=404, detail="일치하는 계정을 찾을 수 없습니다.")
+            user.hashed_pw = pwd_context.hash(set_newpw.new_pw1)
+            await db.commit()
+    
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return pwd_context.hash(password)
+    
+    
+    # gpt 분석 (데이터베이스 저장 여부 확인, 데이터베이스 모델 필요)
     # @classmethod
     # async def gpt_result(cls, userId: str, gpt_result: gptBase, db:AsyncSession):
     #     db_result = gpt_result(

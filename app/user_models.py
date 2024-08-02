@@ -16,7 +16,7 @@ class User(Base):
     hashed_pw = Column(String)
     created_at = Column(DateTime, default=datetime.now)
 
-    # 컬럼 연결시 사용
+    # 속성과 연관된 다른 테이블의 속성값 연결
     # items = relationship("Item", back_populates="owner")
 
 

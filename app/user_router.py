@@ -15,7 +15,7 @@ from config import Config
 from fastapi.responses import JSONResponse
 
 from app.user_database import get_db
-from app.user_schema import UserCreate, UserBase, Token, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, Verificationemail, Verificationsms, updatePw, gptBase
+from app.user_schema import UserCreate, LoginBase, Token, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, Verificationemail, Verificationsms, updatePw, gptBase
 from app.user_crud import UserService, pwd_context
 from auth.email import send_email, verify_code
 from auth.sms import send_verification, check_verification
@@ -37,9 +37,9 @@ async def user_create(userCreate: UserCreate, db: AsyncSession = Depends(get_db)
 
 # 로그인
 @router.post("/login", response_model=Token)
-async def login(login_form: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
-    existing_user = await UserService.userLogin(login_form, db)    
-    if not existing_user or not pwd_context.verify(login_form.password, existing_user.hashed_pw):
+async def login(userLogin: LoginBase, db: AsyncSession = Depends(get_db)):
+    existing_user = await UserService.userLogin(userLogin, db)    
+    if not existing_user or not pwd_context.verify(userLogin.password, existing_user.hashed_pw):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="아이디 또는 비밀번호가 일치하지 않습니다.",
@@ -154,7 +154,7 @@ async def reset_password(body: pwFindForm_email, newPw: updatePw, db: AsyncSessi
 
 # sms 비번 찾기 결과 -> 새로운 비번 설정
 @router.post("/find_pw/phone/password-reset/")
-async def reset_password(body: pwFindForm_sms, newPw: updatePw,  db: AsyncSession = Depends(get_db)):
+async def reset_password(body: pwFindForm_sms, newPw: updatePw, db: AsyncSession = Depends(get_db)):
     existing_user = await UserService.userPwFind_sms(body, db)
     if not existing_user:
         raise HTTPException(status_code=401, detail="계정정보를 다시 확인해주세요.")
@@ -169,8 +169,8 @@ async def analyze(request: Request, background_tasks: BackgroundTasks,
                      LtMed: UploadFile = File(...), RtMed: UploadFile = File(...), 
                      LtAnk: UploadFile = File(...), RtAnk: UploadFile = File(...), Bla: UploadFile = File(...)):
     # 업로드 이미지 확인
-    if not any([RtSup, LtSup, LtMed, RtMed, LtAnk, RtAnk, Bla]):
-        return {"detail": "이미지 없음"}
+    # if not any([RtSup, LtSup, LtMed, RtMed, LtAnk, RtAnk, Bla]):
+    #     return {"detail": "이미지 없음"}
     
     current_date = datetime.now()
     

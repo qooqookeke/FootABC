@@ -13,7 +13,7 @@ from app.user_router import router
 app = FastAPI()
 
 # middleware
-origins = [ 
+origins = [
     "*"
 ]
 

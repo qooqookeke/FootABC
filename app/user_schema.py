@@ -51,9 +51,11 @@ class UserCreate(UserBase):
         
         
 # 로그인
-class LoginBase(UserBase):
+class LoginBase(BaseModel):
+    userId : str
+    password : str
     
-    @field_validator('userId', 'password1')
+    @field_validator('userId', 'password')
     def check_empty(cls, v):
         if not v:
             raise HTTPException(status_code=422, detail="아이디와 비밀번호를 입력해주세요.")

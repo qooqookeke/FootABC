@@ -1,6 +1,8 @@
 config.py
 sqldata.db
 .env
+key_model_final.pth
+seg_model_final.pth
 
 
 # Byte-compiled / optimized / DLL files

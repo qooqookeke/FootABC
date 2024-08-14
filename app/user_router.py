@@ -1,8 +1,10 @@
 from io import BytesIO
 import os
 import shutil
+import subprocess
 import boto3
 from typing import Annotated, List
+import cv2
 from fastapi import APIRouter, HTTPException, Depends, Request, Response, BackgroundTasks, File, UploadFile
 from datetime import timedelta, datetime
 
@@ -12,7 +14,7 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from config import Config
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.user_database import get_db
 from app.user_schema import UserCreate, LoginBase, Token, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, Verificationemail, Verificationsms, updatePw, gptBase
@@ -20,6 +22,7 @@ from app.user_crud import UserService, pwd_context
 from auth.email import send_email, verify_code
 from auth.sms import send_verification, check_verification
 from gpt import post_gpt, create_prompt
+from analysis_inference_n1 import predict_and_save
 
 
 router = APIRouter()
@@ -165,61 +168,81 @@ async def reset_password(body: pwFindForm_sms, newPw: updatePw, db: AsyncSession
 # 분석 이미지 업로드
 @router.post("/analyze/")
 async def analyze(request: Request, background_tasks: BackgroundTasks, 
-                     LtSup: UploadFile = File(...), RtSup: UploadFile = File(...), 
-                     LtMed: UploadFile = File(...), RtMed: UploadFile = File(...), 
-                     LtAnk: UploadFile = File(...), RtAnk: UploadFile = File(...), Bla: UploadFile = File(...)):
+                    Sup: UploadFile = File(...)):
+    
+    # Med: List[UploadFile] = File(...), 
+    #                 Ank: List[UploadFile] = File(...), Bla: List[UploadFile] = File(...)
+    
     # 업로드 이미지 확인
     # if not any([RtSup, LtSup, LtMed, RtMed, LtAnk, RtAnk, Bla]):
     #     return {"detail": "이미지 없음"}
     
-    current_date = datetime.now()
+    # current_date = datetime.now()
     
-    # 로컬 저장 경로
-    # img_dir = '/input'
+    # # 로컬 저장 경로
+    # img_dir = '../input/'
+    # filenames = Sup.filename
+    # # Med.filename, Ank.filename, Bla.filename
     # os.makedirs(img_dir, exist_ok=True)
     
-    files = {
-        'LtSup': LtSup,
-        'RtSup': RtSup,
-        'LtMed': LtMed,
-        'RtMed': RtMed,
-        'LtAnk': LtAnk,
-        'RtAnk': RtAnk,
-        'Bla': Bla
-    }
+    # files = {
+    #     'Sup': Sup, # 발 상위
+    #     # 'Med': Med, # 발 내측
+    #     # 'Ank': Ank, # 발목
+    #     # 'Bla': Bla  # 하지정렬
+    # }
 
     # # 로컬 저장
     # for key, file in files.items():
     #     if file:
-    #         file_path = os.path.join(img_dir, filenames[key])
+    #         file_path = os.path.join(img_dir, filenames)
     #         with open(file_path, "wb") as buffer:
     #             shutil.copyfileobj(file.file, buffer)
 
-    # image_content = await files.read()
+    # image_content = await file.read()
     
     # s3 저장
-    s3 = boto3.client('s3',
-                        aws_access_key_id = Config.AWS_ACCESS_KEY,
-                        aws_secret_access_key = Config.AWS_SECRET_ACCESS_KEY)
+    # s3 = boto3.client('s3',
+    #                     aws_access_key_id = Config.AWS_ACCESS_KEY,
+    #                     aws_secret_access_key = Config.AWS_SECRET_ACCESS_KEY)
         
-    try:
-        for key, file in files.items():
-            if file:
-                filename = f'{key}_{current_date.strftime("%y%m%d%H%M%S")}.jpg'
-                s3.upload_fileobj(file.file, Config.S3_BUCKET,
-                                filename,
-                                ExtraArgs = {'ACL':'public-read',
-                                        'ContentType':'image/jpeg'})
-        print("파일 업로드 완료")
+    # try:
+    #     for key, file in files.items():
+    #         if file:
+    #             filename = f'{key}_{current_date.strftime("%y%m%d%H%M%S")}.jpg'
+    #             s3.upload_fileobj(file.file, Config.S3_BUCKET,
+    #                             filename,
+    #                             ExtraArgs = {'ACL':'public-read',
+    #                                     'ContentType':'image/jpeg'})
+    #     print("파일 업로드 완료")
         
-    except Exception as e:
-        print(e)
-        return {'error':str(e)}, 500
+    # except Exception as e:
+    #     print(e)
+    #     return {'error':str(e)}, 500
     
     # 이미지 분석
-    # result = subprocess.run(["python", "inference_web.py"], capture_output=True, text=True)
+    # result = subprocess.run(["python", "analysis_inference.py"], capture_output=True, text=True)    
+
+
+    # 디렉토리 및 파일 경로 설정
+    current_date = datetime.now().strftime("%Y%m%d%H%M%S")
+    img_dir = './input/'
+    output_dir = './output/'
     
-    return {"detail": "분석이 완료되었습니다."}
+    os.makedirs(img_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+
+    # 파일 저장
+    img_path = os.path.join(img_dir, f"uploaded_image_{current_date}.jpg")
+    with open(img_path, "wb") as buffer:
+        shutil.copyfileobj(Sup.file, buffer)
+
+    # 이미지 예측 및 저장
+    result_image_path = os.path.join(output_dir, f"result_{current_date}.jpg")
+    predict_and_save(img_path, result_image_path)
+
+    # 결과 이미지 반환
+    return FileResponse(result_image_path, media_type="image/jpeg", filename=os.path.basename(result_image_path))
 
 
 # 이미지 분석 결과(평발 or 요족: 각도 / 발목 불안정성 / 다리모양) 

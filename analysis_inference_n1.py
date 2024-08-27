@@ -8,6 +8,16 @@ from detectron2.data import MetadataCatalog
 from detectron2 import model_zoo
 from detectron2.config import get_cfg
 
+import torch
+
+input_dir = './images/input/'
+if not os.path.exists(input_dir):
+    os.makedirs(input_dir)
+    
+output_dir = './images/output/'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
 def setup_cfg(config_file, weights_path, num_classes, keypoint_num=None):
     cfg = get_cfg()
     cfg.merge_from_file(model_zoo.get_config_file(config_file))
@@ -43,7 +53,6 @@ custom_colors = {
 seg_predictor = DefaultPredictor(seg_cfg)
 kp_predictor = DefaultPredictor(kp_cfg)
 
-
 def draw_combined_predictions(image, seg_outputs, kp_outputs):
     v = Visualizer(image[:, :, ::-1], seg_metadata, instance_mode=ColorMode.IMAGE)
     seg_instances = seg_outputs["instances"].to("cpu")
@@ -72,12 +81,9 @@ def draw_combined_predictions(image, seg_outputs, kp_outputs):
 
 
 
-def predict_and_save(input_folder, output_folder):
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
-
-    for image_name in os.listdir(input_folder):
-        image_path = os.path.join(input_folder, image_name)
+def predict_and_save(input_dir, output_dir):
+    for image_name in os.listdir(input_dir):
+        image_path = os.path.join(input_dir, image_name)
         img = cv2.imread(image_path)
 
         if img is None:
@@ -89,12 +95,8 @@ def predict_and_save(input_folder, output_folder):
 
         combined_img = draw_combined_predictions(img, seg_outputs, kp_outputs)
 
-        result_image_path = os.path.join(output_folder, image_name)
+        result_image_path = os.path.join(output_dir, image_name)
         cv2.imwrite(result_image_path, combined_img)
-
         print(f"Predicted image saved to {result_image_path}")
 
-input_folder = "test_images/dr_test/"
-output_folder = "test_images/dr_result/"
-
-predict_and_save(input_folder, output_folder)
+predict_and_save(input_dir, output_dir)

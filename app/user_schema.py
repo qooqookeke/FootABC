@@ -162,15 +162,30 @@ class updatePw(BaseModel):
 
 # 이미지 분석
 class resultBase(BaseModel):
+    id : int
     userId: str
-    custom_id: str
-    Ltsup : str
-    Rtsup : str
-    LtMed : str
-    RtMed : str
-    LtAnk : str
-    RtAnk : str
+    LtSupe : str
+    RtSupe : str
+    LtSupeInUrl : str
+    LtSupeOutUrl : str
+    RtSupeInUrl : str
+    RtsupeOutUrl : str
+    LtMedi : str
+    RtMedi : str
+    LtMediInUrl: str
+    LtMediOutUrl: str
+    RtMediInUrl : str
+    RtMediOutUrl : str
+    LtAnkl : str
+    RtAnkl : str
+    LtAnklInUrl : str
+    LtAnklOutUrl : str
+    RtAnklInUrl : str
+    RtAnklOutUrl : str
     Bla : str
+    blaInUrl : str
+    blaOutUrl : str
+    
 
 
 # gpt 분석

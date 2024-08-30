@@ -16,22 +16,37 @@ class User(Base):
     hashed_pw = Column(String)
     created_at = Column(DateTime, default=datetime.now)
 
-    # 속성과 연관된 다른 테이블의 속성값 연결
-    # items = relationship("Item", back_populates="owner")
+    # # 테이블간 연결 생성
+    # userId = relationship("result", back_populates="owner")
 
 
 # 분석 결과
-# class result(Base):
-#     __tablename__ = "result"
-#     id = Column(Integer, primary_key=True, index=True)
-#     Ltsup = Column(Integer)
-#     Rtsup = Column(Integer)
-#     LtMed = Column(Integer)
-#     RtMed = Column(Integer)
-#     LtAnk = Column(Integer)
-#     RtAnk = Column(Integer)
-#     Bla = Column(Integer)
-#     created_at = Column(DateTime, default=datetime.now)
+class result(Base):
+    __tablename__ = "result"
+    id = Column(Integer, primary_key=True, index=True)
+    userId = Column(Integer, primary_key=True)
+    LtSupe = Column(String)
+    RtSupe = Column(String)
+    LtSupeInUrl = Column(String)
+    LtSupeOutUrl = Column(String)
+    RtSupeInUrl = Column(String)
+    RtsupeOutUrl = Column(String)
+    LtMedi = Column(String)
+    RtMedi = Column(String)
+    LtMediInUrl = Column(String)
+    LtMediOutUrl = Column(String)
+    RtMediInUrl = Column(String)
+    RtMediOutUrl = Column(String)
+    LtAnkl = Column(String)
+    RtAnkl = Column(String)
+    LtAnklInUrl = Column(String)
+    LtAnklOutUrl = Column(String)
+    RtAnklInUrl = Column(String)
+    RtAnklOutUrl = Column(String)
+    Bla = Column(String)
+    blaInUrl = Column(String)
+    blaOutUrl = Column(String)
+    created_at = Column(DateTime, default=datetime.now)
 
 
 # gpt 분석

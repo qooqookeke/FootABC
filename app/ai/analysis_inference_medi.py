@@ -1,5 +1,8 @@
 import os
+import random
+from typing import List
 import cv2
+import numpy as np
 import torch
 from detectron2.config import get_cfg
 from detectron2.engine import DefaultPredictor
@@ -10,13 +13,6 @@ from detectron2.config import get_cfg
 
 import torch
 
-input_dir = './images/input/'
-if not os.path.exists(input_dir):
-    os.makedirs(input_dir)
-    
-output_dir = './images/output/'
-if not os.path.exists(output_dir):
-    os.makedirs(output_dir)
 
 def setup_cfg(config_file, weights_path, num_classes, keypoint_num=None):
     cfg = get_cfg()
@@ -81,22 +77,46 @@ def draw_combined_predictions(image, seg_outputs, kp_outputs):
 
 
 
-def predict_and_save(input_dir, output_dir):
-    for image_name in os.listdir(input_dir):
-        image_path = os.path.join(input_dir, image_name)
-        img = cv2.imread(image_path)
 
-        if img is None:
-            print(f"Skip {image_path}")
-            continue
+async def predict_and_save(images_to_analyze: List[tuple], output_dir:str):    
+    # for image_name in os.listdir(input_dir):
+    #     image_path = os.path.join(input_dir, image_name)      
+    #     img = cv2.imread(image_path)
+    
+    # if img is None:
+        #     print(f"Skip {image_path}")
+        #     continue
 
-        seg_outputs = seg_predictor(img)
-        kp_outputs = kp_predictor(img)
+    for _, image in images_to_analyze:
+        try:
+            img_data = await image.read()  # 비동기적으로 이미지 데이터 읽기
+            
+            # 디버깅: 이미지 데이터 크기 확인
+            if not img_data:
+                print("Error: Empty image data")
+                continue
 
-        combined_img = draw_combined_predictions(img, seg_outputs, kp_outputs)
+            # 바이너리 데이터를 NumPy 배열로 변환
+            img_array = np.frombuffer(img_data, np.uint8)
+            
+            # NumPy 배열을 이미지로 디코딩
+            img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+            
+            # 디버깅: 이미지가 제대로 로드되었는지 확인
+            if img is None:
+                print("Error decoding image")
+                continue
+            
+            # 이미지 예측 및 저장
+            seg_outputs = seg_predictor(img)
+            kp_outputs = kp_predictor(img)
 
-        result_image_path = os.path.join(output_dir, image_name)
-        cv2.imwrite(result_image_path, combined_img)
-        print(f"Predicted image saved to {result_image_path}")
+            combined_img = draw_combined_predictions(img, seg_outputs, kp_outputs)
 
-predict_and_save(input_dir, output_dir)
+            imgname = f'processed_{random.randint(1000, 9999)}.jpg'
+            result_image_path = os.path.join(output_dir, imgname)
+            cv2.imwrite(result_image_path, combined_img)
+            print(f"Predicted image saved to {result_image_path}")
+
+        except Exception as e:
+            print(f"An error occurred: {e}")

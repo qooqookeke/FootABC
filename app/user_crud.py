@@ -2,9 +2,9 @@ from datetime import datetime
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from sqlalchemy.future import select
-from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, updatePw, gptBase, UserIdForm
+from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, updatePw, gptBase, UserIdForm, resultBase
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.user_models import User
+from app.user_models import User, result
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -120,6 +120,40 @@ class UserService:
         return pwd_context.hash(password)
     
     
+    # 이미지 분석 결과
+    @classmethod
+    async def save_analysis_result(cls, save_result: resultBase, db: AsyncSession):
+        db_result = result(
+            userId=save_result.userId,
+            LtSupe = save_result.LtSupe,
+            RtSupe = save_result.RtSupe,
+            LtSupeInUrl = save_result.LtSupeInUrl,
+            LtSupeOutUrl = save_result.LtSupeOutUrl,
+            RtSupeInUrl = save_result.RtSupeInUrl,
+            RtsupeOutUrl = save_result.RtsupeOutUrl,
+            LtMedi = save_result.LtMedi,
+            RtMedi = save_result.RtMedi,
+            LtMediInUrl= save_result.LtMediInUrl,
+            LtMediOutUrl= save_result.LtMediOutUrl,
+            RtMediInUrl = save_result.RtMediInUrl,
+            RtMediOutUrl = save_result.RtMediOutUrl,
+            LtAnkl = save_result.LtAnkl,
+            RtAnkl = save_result.RtAnkl,
+            LtAnklInUrl = save_result.LtAnklInUrl,
+            LtAnklOutUrl = save_result.LtAnklOutUrl,
+            RtAnklInUrl = save_result.RtAnklInUrl,
+            RtAnklOutUrl = save_result.RtAnklOutUrl,
+            Bla = save_result.Bla,
+            blaInUrl = save_result.blaInUrl,
+            blaOutUrl = save_result.blaOutUrl,
+            created_at=datetime.now()
+        )
+        db.add(db_result)
+        await db.commit()
+        await db.refresh(db_result)        
+        return db_result 
+    
+    
     # gpt 분석 (데이터베이스 저장 여부 확인, 데이터베이스 모델 필요)
     # @classmethod
     # async def gpt_result(cls, userId: str, gpt_result: gptBase, db:AsyncSession):
@@ -166,4 +200,3 @@ class UserService:
     #     db.commit()
     #     return True
     
-

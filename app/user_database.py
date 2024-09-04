@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import MetaData
 from config import Config
 
-DATABASE_URL = Config.DB_URL
+DATABASE_URL = Config.HOST
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 

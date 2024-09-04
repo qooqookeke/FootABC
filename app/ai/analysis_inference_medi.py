@@ -1,9 +1,13 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 import os
 import random
 from typing import List
 import cv2
 import numpy as np
 import torch
+import boto3
 from detectron2.config import get_cfg
 from detectron2.engine import DefaultPredictor
 from detectron2.utils.visualizer import Visualizer, ColorMode
@@ -76,47 +80,51 @@ def draw_combined_predictions(image, seg_outputs, kp_outputs):
 
 
 
+# async def predict_and_save(mediAnalyze, output_dir):
+#     current_date = datetime.now().strftime("%Y%m%d%H%M%S")
+#     for index, image_path in mediAnalyze:
+#         img = cv2.imread(image_path)
+
+#         if img is None:
+#             print(f"Error: Empty image data for {image_path}")
+#             continue
+
+#         seg_outputs = seg_predictor(img)
+#         kp_outputs = kp_predictor(img)
+        
+#         combined_img = draw_combined_predictions(img, seg_outputs, kp_outputs)
 
 
-async def predict_and_save(images_to_analyze: List[tuple], output_dir:str):    
-    # for image_name in os.listdir(input_dir):
-    #     image_path = os.path.join(input_dir, image_name)      
-    #     img = cv2.imread(image_path)
+#         result_image_path = os.path.join(output_dir, f"result_{current_date}_{index}.jpg")
+#         cv2.imwrite(result_image_path, combined_img)
+#         print(f"Predicted image saved to {result_image_path}")
+        
+        
+
+
+async def process_image(index, image_path, output_dir, executor):
+    loop = asyncio.get_event_loop()
+    img = await loop.run_in_executor(executor, cv2.imread, image_path)
+
+    if img is None:
+        print(f"Error: Empty image data for {image_path}")
+        return
+
+    seg_outputs = await loop.run_in_executor(executor, seg_predictor, img)
+    kp_outputs = await loop.run_in_executor(executor, kp_predictor, img)
+    combined_img = await loop.run_in_executor(executor, draw_combined_predictions, img, seg_outputs, kp_outputs)
+
+    current_date = datetime.now().strftime("%Y%m%d%H%M%S")
+    result_image_path = os.path.join(output_dir, f"result_{current_date}_{index}.jpg")
+    await loop.run_in_executor(executor, cv2.imwrite, result_image_path, combined_img)
+    print(f"Predicted image saved to {result_image_path}")
+
+
+async def predict_and_save(mediAnalyze, output_dir):
     
-    # if img is None:
-        #     print(f"Skip {image_path}")
-        #     continue
-
-    for _, image in images_to_analyze:
-        try:
-            img_data = await image.read()  # 비동기적으로 이미지 데이터 읽기
-            
-            # 디버깅: 이미지 데이터 크기 확인
-            if not img_data:
-                print("Error: Empty image data")
-                continue
-
-            # 바이너리 데이터를 NumPy 배열로 변환
-            img_array = np.frombuffer(img_data, np.uint8)
-            
-            # NumPy 배열을 이미지로 디코딩
-            img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
-            
-            # 디버깅: 이미지가 제대로 로드되었는지 확인
-            if img is None:
-                print("Error decoding image")
-                continue
-            
-            # 이미지 예측 및 저장
-            seg_outputs = seg_predictor(img)
-            kp_outputs = kp_predictor(img)
-
-            combined_img = draw_combined_predictions(img, seg_outputs, kp_outputs)
-
-            imgname = f'processed_{random.randint(1000, 9999)}.jpg'
-            result_image_path = os.path.join(output_dir, imgname)
-            cv2.imwrite(result_image_path, combined_img)
-            print(f"Predicted image saved to {result_image_path}")
-
-        except Exception as e:
-            print(f"An error occurred: {e}")
+    with ThreadPoolExecutor() as executor:
+        tasks = [
+            process_image(index, image_path, output_dir, executor)
+            for index, image_path in mediAnalyze
+        ]
+        await asyncio.gather(*tasks)

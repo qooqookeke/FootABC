@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from sqlalchemy.future import select
 from app.user_schema import UserCreate, LoginBase, idFindForm_email, idFindform_sms, pwFindForm_email, pwFindForm_sms, updatePw, gptBase, UserIdForm, resultBase
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.user_models import User, result
+from app.user_models import User, AnalysisResult
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
@@ -122,30 +122,30 @@ class UserService:
     
     # 이미지 분석 결과
     @classmethod
-    async def save_analysis_result(cls, save_result: resultBase, db: AsyncSession):
-        db_result = result(
-            userId=save_result.userId,
-            LtSupe = save_result.LtSupe,
-            RtSupe = save_result.RtSupe,
-            LtSupeInUrl = save_result.LtSupeInUrl,
-            LtSupeOutUrl = save_result.LtSupeOutUrl,
-            RtSupeInUrl = save_result.RtSupeInUrl,
-            RtsupeOutUrl = save_result.RtsupeOutUrl,
-            LtMedi = save_result.LtMedi,
-            RtMedi = save_result.RtMedi,
-            LtMediInUrl= save_result.LtMediInUrl,
-            LtMediOutUrl= save_result.LtMediOutUrl,
-            RtMediInUrl = save_result.RtMediInUrl,
-            RtMediOutUrl = save_result.RtMediOutUrl,
-            LtAnkl = save_result.LtAnkl,
-            RtAnkl = save_result.RtAnkl,
-            LtAnklInUrl = save_result.LtAnklInUrl,
-            LtAnklOutUrl = save_result.LtAnklOutUrl,
-            RtAnklInUrl = save_result.RtAnklInUrl,
-            RtAnklOutUrl = save_result.RtAnklOutUrl,
-            Bla = save_result.Bla,
-            blaInUrl = save_result.blaInUrl,
-            blaOutUrl = save_result.blaOutUrl,
+    async def save_analysis_result(cls,  username: str, userResult: dict, db: AsyncSession):
+        db_result = AnalysisResult(
+            username=username,
+            LtSupe = userResult.LtSupe,
+            RtSupe = userResult.RtSupe,
+            LtSupeInUrl = userResult.LtSupeInUrl,
+            LtSupeOutUrl = userResult.LtSupeOutUrl,
+            RtSupeInUrl = userResult.RtSupeInUrl,
+            RtsupeOutUrl = userResult.RtsupeOutUrl,
+            LtMedi = userResult.LtMedi,
+            RtMedi = userResult.RtMedi,
+            LtMediInUrl= userResult.LtMediInUrl,
+            LtMediOutUrl= userResult.LtMediOutUrl,
+            RtMediInUrl = userResult.RtMediInUrl,
+            RtMediOutUrl = userResult.RtMediOutUrl,
+            LtAnkl = userResult.LtAnkl,
+            RtAnkl = userResult.RtAnkl,
+            LtAnklInUrl = userResult.LtAnklInUrl,
+            LtAnklOutUrl = userResult.LtAnklOutUrl,
+            RtAnklInUrl = userResult.RtAnklInUrl,
+            RtAnklOutUrl = userResult.RtAnklOutUrl,
+            Bla = userResult.Bla,
+            blaInUrl = userResult.blaInUrl,
+            blaOutUrl = userResult.blaOutUrl,
             created_at=datetime.now()
         )
         db.add(db_result)

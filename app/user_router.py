@@ -3,6 +3,7 @@ import os
 import random
 import shutil
 import subprocess
+import time
 import boto3
 from typing import Annotated, List, Optional
 import cv2
@@ -62,7 +63,6 @@ async def login(userLogin: LoginBase, db: AsyncSession = Depends(get_db)):
         "exp": datetime.now() + timedelta(minutes=int(Config.JWT_ACCESS_TOKEN_EXPIRES))
     }
     access_token = jwt.encode(data, Config.JWT_SECRET_KEY, Config.ALGORITHM)
-    print(access_token)
     
     # 쿠키에 토큰 설정
     response = JSONResponse(content={
@@ -192,8 +192,10 @@ def filter_images_by_content_type(images: List[UploadFile]) -> List[tuple]:
 
 # 이미지 분석 처리
 @router.post("/analyze/")
-async def analyze(request: Request,  images: List[UploadFile] = File(...) ):
-    # result: resultBase, db:AsyncSession = Depends(get_db),
+async def analyze(request: Request, images: List[UploadFile] = File(...), db: AsyncSession = Depends(get_db)):
+    
+    start_time = time.time()
+    print(start_time)
     
     # 평발 : Lmedi
     # 무지외반 : supe
@@ -201,7 +203,6 @@ async def analyze(request: Request,  images: List[UploadFile] = File(...) ):
     # 하지정렬 : bla
     
     filtered_images = filter_images_by_content_type(images)
-    print(filtered_images)
 
     current_date = datetime.now().strftime("%Y%m%d%H%M%S")
     input_dir = 'D:/GitHub/FootABC/images/input/'
@@ -215,62 +216,81 @@ async def analyze(request: Request,  images: List[UploadFile] = File(...) ):
                 file_path = os.path.join(directory, filename)
                 if os.path.isfile(file_path):
                     os.unlink(file_path)
-        
-    for _, image in filtered_images:  # file -> image로 변경
-        contents = await image.read()  # 이제 올바른 image 객체에 대해 read 호출
-        filename = f'{current_date}_{random.randrange(999)}.jpg'
+                    
+    input_filenames = []
+    output_filenames = []
+    for index, image in filtered_images:
+        contents = await image.read()
+        filename = f'{current_date}_{index}.jpg'
         file_path = os.path.join(input_dir, filename)
         with open(file_path, "wb") as f:
             f.write(contents)
-
-    
-    """ 
-    이미지 전달 받을 때 리스트 형식으로 받고 content type이 empty인 것은 {} 빈 배열로 바꿔주고
-    각 순서에 맞게 이미지 분석할 수 있도록 함
-    학습시 오류가 날 수 있으므로 빈 배열로 온 것을 학습에 들어가지 않도록 셋팅
-    """
+        input_filenames.append(f'input_{current_date}_{index}.jpg')
+        
+    middle_time = time.time()
+    print(start_time - middle_time)
     
     # 이미지 분석
     try:
-        images_to_analyze = [image for index, image in enumerate(filtered_images) if index in [0, 1]]
-        print(images_to_analyze)
+        mediAnalyze = [
+            (index, os.path.join(input_dir, f"{current_date}_{index}.jpg"))
+            for index, _ in filtered_images
+            if index in [0, 1]
+        ]
+        # supeAnalyze = [
+        #     (index, os.path.join(input_dir, f"{current_date}_{index}.jpg"))
+        #     for index, _ in filtered_images
+        #     if index in [2, 3]
+        # ]
+        # anklAnalyze = [
+        #     (index, os.path.join(input_dir, f"{current_date}_{index}.jpg"))
+        #     for index, _ in filtered_images
+        #     if index in [4, 5]
+        # ]
+        # blaAnalyze = [
+        #     (index, os.path.join(input_dir, f"{current_date}_{index}.jpg"))
+        #     for index, _ in filtered_images
+        #     if index in [6]
+        # ]
         
-        if images_to_analyze:
-            await medi_predict(images_to_analyze, output_dir)
-            uploaded_urls = await s3Upload(images, output_dir)
-            # 데이터베이스 저장
-            # await UserService.save_analysis_result(result, db)
+        if mediAnalyze:
+            await medi_predict(mediAnalyze, output_dir) 
             
-            # 메모리에 분석 결과 저장
-            analysis_result = {
-                'in': uploaded_urls[0],
-                'out': uploaded_urls[1],
-                'in': uploaded_urls[2],
-                'out': uploaded_urls[3]
-            }
-            memory_store.append(analysis_result)
+            for output_filename in os.listdir(output_dir):
+                output_filenames.append(output_filename)
+            uploaded_urls = await s3Upload(mediAnalyze, output_dir, input_filenames, output_filenames)
             
-            # return JSONResponse(status_code=200, content={
-            #     'in': uploaded_urls[0],
-            #     'out': uploaded_urls[1]
-            # })
-            return JSONResponse(status_code=200, content=analysis_result)
+            # 메모리 저장
+            memory_store.append(uploaded_urls)
+            
+            return JSONResponse(status_code=200, content=uploaded_urls)
         else:
             return JSONResponse(status_code=400, content={'error': 'No input files provided'})
-        # elif supe:
-            # supe_predict(input_dir, output_dir)
-        #     uploaded_urls = await s3Upload(medi, output_dir)
-        #     return JSONResponse(status_code=200, content={
-        #         'in': uploaded_urls[0],
-        #         'out': uploaded_urls[1]
-        #     })
-        # else:
-        #     return JSONResponse(status_code=400, content={'error': 'No input files provided'})
-        # elif post:
-            # supe_predict(input_dir, output_dir)
+        
+        # elif supeAnalyze:
+            # await supe_predict(supeAnalyze, output_dir)
+        #     uploaded_urls = await s3Upload(supeAnalyze, output_dir, input_filenames, output_filenames)
+
+        # elif anklAnalyze:
+            # ankl_predict(anklAnalyze, output_dir)
         # elif ante:
             # supe_predict(input_dir, output_dir)
     
+        # 데이터베이스 저장
+        # await UserService.save_analysis_result(username, userResult, db)
+        
+        # s3 한꺼번에 저장
+        # for output_filename in os.listdir(output_dir):
+        #         output_filenames.append(output_filename)
+        #     uploaded_urls = await s3Upload(mediAnalyze, output_dir, input_filenames, output_filenames)
+
+        # return JSONResponse(status_code=200, content=uploaded_urls)
+    
+
+        end_time = time.time()
+        print(middle_time - end_time)
+        
+        
     except Exception as e:
         print(e)
         return {'error': 'Image analysis failed'}, 500

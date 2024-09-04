@@ -4,6 +4,8 @@ sqldata.db
 key_model_final.pth
 seg_model_final.pth
 save_testdata.ipynb
+input
+output
 
 
 # Byte-compiled / optimized / DLL files

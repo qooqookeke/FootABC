@@ -4,12 +4,10 @@ from config import Config
 from datetime import datetime
 import os
 
-# S3에 파일을 업로드하는 비동기 함수
-async def s3Upload(medi, output_dir):
+async def s3Upload(mediAnalyze, output_dir, input_filenames, output_filenames):
     current_date = datetime.now().strftime("%Y%m%d%H%M%S")
-    uploaded_files_urls = []  # 업로드된 파일의 URL을 저장할 리스트
+    uploaded_files_urls = []  
     
-    # S3 클라이언트 설정
     s3 = boto3.client(
         's3',
         aws_access_key_id=Config.AWS_ACCESS_KEY,
@@ -17,38 +15,55 @@ async def s3Upload(medi, output_dir):
     )
     
     try:
-        # 입력 파일을 S3에 업로드
-        for image in medi:
-            if image:
-                image.file.seek(0)
-                input_filename = f'input_{current_date}_{random.randint(0, 999)}.jpg'
-                s3.upload_fileobj(
-                    image.file, 
-                    Config.S3_BUCKET, 
-                    input_filename,
-                    ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'}
-                )
-                # 업로드한 파일의 URL을 생성하여 리스트에 추가
+        for (index, image_path), input_filename in zip(mediAnalyze, input_filenames):
+            if image_path:
+                with open(image_path, 'rb') as f:
+                    s3.upload_fileobj(
+                        f, 
+                        Config.S3_BUCKET, 
+                        input_filename,
+                        ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'}
+                    )
                 file_url = f"https://{Config.S3_BUCKET}.s3.{Config.AWS_REGION}.amazonaws.com/{input_filename}"
                 uploaded_files_urls.append(file_url)
+                print(f"Uploaded input file: {file_url}")
 
-        # 결과 파일을 S3에 업로드
-        for filename in os.listdir(output_dir):
-            file_path = os.path.join(output_dir, filename)
+        for output_filename in output_filenames:
+            file_path = os.path.join(output_dir, output_filename)
             if os.path.isfile(file_path):
-                output_filename = f'result_{current_date}_{random.randint(0, 999)}.jpg'
-                s3.upload_file(
-                    file_path, 
-                    Config.S3_BUCKET, 
-                    output_filename,
-                    ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'}
-                )
-                # 업로드한 파일의 URL을 생성하여 리스트에 추가
+                with open(file_path, 'rb') as f:
+                    s3.upload_fileobj(
+                        f, 
+                        Config.S3_BUCKET, 
+                        output_filename,
+                        ExtraArgs={'ACL': 'public-read', 'ContentType': 'image/jpeg'}
+                    )
                 file_url = f"https://{Config.S3_BUCKET}.s3.{Config.AWS_REGION}.amazonaws.com/{output_filename}"
                 uploaded_files_urls.append(file_url)
+                print(f"Uploaded output file: {file_url}")
+            else:
+                print(f"File not found for output upload: {file_path}")
 
         print("파일 업로드 완료")
-        return uploaded_files_urls
+        
+        input_urls = {}
+        output_urls = {}
+        
+        for url in uploaded_files_urls:
+                if 'input_' in url:
+                    filename = url.split('/')[-1] 
+                    index = filename.split('_')[-1].split('.')[0]  
+                    input_urls[f'input_{index}'] = url
+                elif 'result_' in url:
+                    filename = url.split('/')[-1] 
+                    index = filename.split('_')[-1].split('.')[0]
+                    output_urls[f'output_{index}'] = url
+                    
+        analysis_result = {**input_urls, **output_urls}
+        
+        print(analysis_result)
+        
+        return analysis_result
 
     except Exception as e:
         print(f"S3 업로드 실패: {e}")

@@ -8,7 +8,8 @@ from starlette.middleware.httpsredirect import (  # noqa  - https redirect
 from starlette.responses import FileResponse
 from starlette.staticfiles import StaticFiles
 
-from app.user_router import router
+from app import user_router
+from app import analysis_router
 
 app = FastAPI()
 
@@ -26,11 +27,8 @@ app.add_middleware(
 )
 
 
-app.include_router(router, tags=['user_create'])
-app.include_router(router, tags=['login'])
-app.include_router(router, tags=['logout'])
-app.include_router(router, tags=['analyze'])
-app.include_router(router, tags=['create_gpt'])
+app.include_router(user_router.router, tags=['users'])
+app.include_router(analysis_router.router, tags=['analyze'])
 
 
 
